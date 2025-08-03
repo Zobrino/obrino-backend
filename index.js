@@ -1,39 +1,42 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
-
+const fetch = require('node-fetch'); // Solo si usas Node < 18
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
-// Middleware
-app.use(express.json({ limit: '50mb' }));
-app.use('/audio', express.static(path.join(__dirname, 'public/audio')));
+app.use(express.json());
 
-// Ruta para recibir audio y guardarlo
-app.post('/upload-audio', (req, res) => {
-  const { filename, audio_base64 } = req.body;
+// Ruta para recibir llamadas desde Twilio
+app.post('/zobrino-hook', async (req, res) => {
+  const { CallSid, From, To, RecordingUrl } = req.body;
 
-  if (!filename || !audio_base64) {
-    return res.status(400).json({ error: '❌ Missing filename or audio_base64' });
+  console.log('🔔 Twilio envió una llamada:');
+  console.log('CallSid:', CallSid);
+  console.log('From:', From);
+  console.log('To:', To);
+  console.log('RecordingUrl:', RecordingUrl);
+
+  try {
+    const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/XXXXXXXX/XXXXXXXX', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ CallSid, From, To, RecordingUrl })
+    });
+
+    const result = await zapierResponse.text();
+    console.log('✅ Enviado a Zapier:', result);
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('❌ Error al enviar a Zapier:', error);
+    res.status(500).send('Error al reenviar a Zapier');
   }
+});
 
-  const audioBuffer = Buffer.from(audio_base64, 'base64');
-  const filePath = path.join(__dirname, 'public/audio', filename);
-
-  fs.writeFile(filePath, audioBuffer, (err) => {
-    if (err) {
-      console.error('❌ Error guardando archivo:', err);
-      return res.status(500).json({ error: '❌ Failed to save audio file' });
-    }
-
-    const publicUrl = `${req.protocol}://${req.get('host')}/audio/${filename}`;
-    res.status(200).json({ message: '✅ Audio guardado', url: publicUrl });
-  });
+// Ruta base (opcional)
+app.get('/', (req, res) => {
+  res.send('Zobrino backend en vivo');
 });
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`\n*********************************`);
-  console.log(`* 🟢 ZOBRINO ESCUCHANDO EN PUERTO ${PORT} *`);
-  console.log(`*********************************\n`);
+  console.log(`ZOBRINO ESCUCHANDO EN PUERTO ${PORT}`);
 });
