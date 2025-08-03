@@ -31,12 +31,17 @@ app.post('/upload-audio', (req, res) => {
   });
 });
 
-// 🚨 NUEVA RUTA PARA TWILIO
+// ✅ NUEVA RUTA GENERAL PARA RECIBIR DATOS JSON DESDE ZAPIER U OTROS
 app.post('/zobrino-hook', (req, res) => {
-  console.log('✅ Llamada recibida desde Twilio');
-  console.log('🧾 Datos:', req.body);
+  const data = req.body;
 
-  res.status(200).send('✅ Señal recibida correctamente');
+  console.log('🟣 ZOBRINO-HOOK RECIBIÓ:', data);
+
+  res.status(200).json({
+    success: true,
+    message: '✅ Datos recibidos correctamente en /zobrino-hook',
+    received: data
+  });
 });
 
 // Inicio del servidor
